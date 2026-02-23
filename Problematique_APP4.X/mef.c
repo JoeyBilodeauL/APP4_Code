@@ -2,6 +2,7 @@
 
 #define TRAME_SIZE 40000
 #define BUFFER_SIZE 21753
+#define SINUS_SIZE 32000
 
 uint16_t Trame[TRAME_SIZE] = {0};
 uint16_t SinusTest[10] = {0x1FF, 0x32B, 0x3E4, 0x3E4, 0x32B,
@@ -32,7 +33,6 @@ int executeRx(struct Rx *p, uint16_t *compteur, uint8_t state)
     
     endOfCycle = checkTimer(p->compteur, compteur);
 
-    
     if (state == 1)
     {
         LATAbits.LATA0 = 1;

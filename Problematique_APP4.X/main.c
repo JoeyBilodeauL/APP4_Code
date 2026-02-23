@@ -32,7 +32,8 @@ extern volatile uint16_t isrCompteur;
 uint16_t txCompteur = 0;
 uint16_t rxFree = 1;
 uint16_t txFree = 1;
-
+static uint16_t waitingLsb = 0;
+static uint16_t savedMsb = 0;
 extern int Parite_Check(int val);
 
 
@@ -58,7 +59,7 @@ void main(void)
     
     setTxStruct(&restitutionData, TRAME_SIZE);
     setTxStruct(&testTxData, SINUS_SIZE);
-    setTxStruct(&intercomData, 512);
+    setTxStruct(&intercomData, BUFFER_SIZE);
     isrCompteur = 0;
     
     LATAbits.LATA7 = 1;
@@ -82,6 +83,10 @@ void main(void)
         else if (stateRx == RECEIVING)
         {
             rxFree = executeRx(&receivingData, &rxReceivingCompteur, stateRx);
+                if (isrCompteur == rxReceivingCompteur)
+                {
+                    stateRx = ATTENTE_RX;
+                }
         }
         else
         {
@@ -140,32 +145,37 @@ void __ISR(_UART_4_VECTOR, IPL7AUTO) uart4_ISR(void)
 {
     stateRx = RECEIVING;
     
-    if (PORTBbits.RB9 == 0)
+    while (U4STAbits.URXDA == 1)
     {
-        while(U4STAbits.URXDA == 1)
+        uint16_t data = U4RXREG & 0x1FF;
+        
+        if (PORTBbits.RB9 == 0)
         {
-            bufferRx[isrCompteur % BUFFER_SIZE] = U4RXREG & 0x1FF;
-            LATAbits.LATA5 = Parite_Check(bufferRx[isrCompteur % BUFFER_SIZE]);
-            bufferRx[isrCompteur % BUFFER_SIZE] = bufferRx[isrCompteur % BUFFER_SIZE] << 2;
+            uint16_t idx = isrCompteur % BUFFER_SIZE;
+            bufferRx[idx] = data;
+            LATAbits.LATA5 = Parite_Check(data);
+            bufferRx[idx] &= 0xFF;
+            bufferRx[idx] <<= 2;
             isrCompteur++;
         }
-    }
-    else
-    {
-        while (U4STAbits.URXDA == 1)
+        else
         {
-            uint16_t msb = U4RXREG & 0x1FF;
-            
-            while (U4STAbits.URXDA == 0) {}
-            
-            uint16_t lsb = U4RXREG & 0x1FF;
-            
-            LATAbits.LATA5 = Parite_Check(lsb) | Parite_Check(msb);
-            
-            bufferRx[isrCompteur % BUFFER_SIZE] = ((msb << 2) | (lsb >> 6)) & 0x3FF;
-            isrCompteur++;
+            if (waitingLsb == 0)
+            {
+                savedMsb = data;
+                waitingLsb = 1;
+            }
+            else
+            {
+                LATAbits.LATA5 = Parite_Check(savedMsb) | Parite_Check(data);
+                data &= 0xFF;
+                savedMsb &= 0xFF;
+                bufferRx[isrCompteur % BUFFER_SIZE] = ((savedMsb<<2) | (data>>6)) & 0x3FF;
+                isrCompteur++;
+                waitingLsb = 0;
+            }
         }
-    }
+    } 
     
     if (isrCompteur == BUFFER_SIZE-1)
     {
