@@ -51,14 +51,14 @@ void main(void)
     struct Tx testTxData;
     struct Tx intercomData;
     
-    setRxStruct(&enregistrementData, TRAME_SIZE, 1, 0, 1, 0);
-    setRxStruct(&jouerData, TRAME_SIZE, 0, 0, 2, 5);
-    setRxStruct(&testData, SINUS_SIZE, 0, 1, 0, 0);
-    setRxStruct(&receivingData, BUFFER_SIZE, 0, 0, 0, 0);
+    setRxStruct(&enregistrementData, TRAME_SIZE);
+    setRxStruct(&jouerData, TRAME_SIZE);
+    setRxStruct(&testData, SINUS_SIZE);
+    setRxStruct(&receivingData, BUFFER_SIZE);
     
-    setTxStruct(&restitutionData, TRAME_SIZE, 0);
-    setTxStruct(&testTxData, SINUS_SIZE, 1);
-    setTxStruct(&intercomData, 512, 0);
+    setTxStruct(&restitutionData, TRAME_SIZE);
+    setTxStruct(&testTxData, SINUS_SIZE);
+    setTxStruct(&intercomData, 512);
     isrCompteur = 0;
     
     LATAbits.LATA7 = 1;
@@ -81,14 +81,7 @@ void main(void)
         }
         else if (stateRx == RECEIVING)
         {
-            if (rxReceivingCompteur < isrCompteur)
-            {
-                rxFree = executeRx(&receivingData, &rxReceivingCompteur, stateRx);
-            }
-            else
-            {
-                stateRx = ATTENTE_RX;
-            }
+            rxFree = executeRx(&receivingData, &rxReceivingCompteur, stateRx);
         }
         else
         {
@@ -107,7 +100,7 @@ void main(void)
         if (PORTFbits.RF3 == 1)
         {
             txFree = executeTx(&intercomData, &txCompteur, stateTx);
-            stateTx = ATTENTE_TX;
+            stateTx = INTERCOM;
         }
         else
         {
@@ -128,6 +121,17 @@ void main(void)
                 stateTx = ATTENTE_TX;
                 txCompteur = 0;
             }
+        }
+        
+        if (stateTx == INTERCOM && PORTFbits.RF3 == 0)
+        {
+            LATACLR = 0x7F;
+            stateRx = ATTENTE_RX;
+            stateTx = ATTENTE_TX;
+            rxCompteur = 0; 
+            isrCompteur = 0;
+            rxReceivingCompteur = 0;
+            txCompteur = 0;
         }
     }
 }
@@ -163,9 +167,14 @@ void __ISR(_UART_4_VECTOR, IPL7AUTO) uart4_ISR(void)
         }
     }
     
-    if (isrCompteur > 65000 && stateTx == ATTENTE_TX)
+    if (isrCompteur == BUFFER_SIZE-1)
     {
-        isrCompteur = 0;    
+        isrCompteur = 0;
+    }
+    
+    if (rxReceivingCompteur == BUFFER_SIZE-1)
+    {
+        rxReceivingCompteur = 0;
     }
 
     IFS2bits.U4RXIF = 0;

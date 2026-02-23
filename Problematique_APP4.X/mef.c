@@ -16,20 +16,14 @@ uint16_t msb, lsb;
 volatile uint16_t isrCompteur;
 
 
-void setRxStruct(struct Rx *p, uint16_t compteur, uint8_t hasADC, uint16_t test, uint16_t del,
-                 uint16_t delFrq)
+void setRxStruct(struct Rx *p, uint16_t compteur)
 {
     p->compteur = compteur;
-    p->hasADC = hasADC;
-    p->test = test;
-    p->del = del;
-    p->delFrq = delFrq;
 }
 
-void setTxStruct(struct Tx *p, uint16_t compteur, uint16_t test)
+void setTxStruct(struct Tx *p, uint16_t compteur)
 {
     p->compteur = compteur;
-    p->test = test;
 }
 
 int executeRx(struct Rx *p, uint16_t *compteur, uint8_t state)
@@ -37,20 +31,12 @@ int executeRx(struct Rx *p, uint16_t *compteur, uint8_t state)
     uint8_t endOfCycle = 0;
     
     endOfCycle = checkTimer(p->compteur, compteur);
-    
-    if (endOfCycle == 1)
-    {
-        return 1;
-    }
+
     
     if (state == 1)
     {
         LATAbits.LATA0 = 1;
         Trame[*compteur] = MicValue;
-    }
-    else if (state == 3)
-    {
-        OC1RS = SinusTest[*compteur % 10];
     }
     else if (state == 2)
     {
@@ -61,36 +47,43 @@ int executeRx(struct Rx *p, uint16_t *compteur, uint8_t state)
             LATAINV = 2;
         }
     }
+    else if (state == 3)
+    {
+        OC1RS = SinusTest[*compteur % 10];
+    }
     else if (state == 4)
     {
         OC1RS = (bufferRx[*compteur % BUFFER_SIZE]) & 0x3FF;
         bufferRx[*compteur % BUFFER_SIZE] = 0;
     }
 
-    
     Timer3Flag = 0;
+    
+    if (endOfCycle == 1)
+    {
+        return 1;
+    }
     
     return 0;    
 }
 
 int executeTx(struct Tx *p, uint16_t *compteur, uint8_t state)
 {
-    
-    if (state == 0)
+    if (state == 1)
     {
-        
+            
         if (PORTBbits.RB9 == 0)
         {
             while (U4STAbits.UTXBF == 1) {}
-            U4TXREG = (Parite(MicValue >> 2)) & 0x1FF;
+            U4TXREG = Parite(Trame[*compteur] >> 2) & 0x1FF;
         }
         else
         {
-            Data_Transfert(MicValue, &msb, &lsb);
+            Data_Transfert(Trame[*compteur], &msb, &lsb);
             while (U4STAbits.UTXBF == 1) {}
             U4TXREG = (Parite(msb) & 0x1FF);
             while (U4STAbits.UTXBF == 1) {}
-            U4TXREG = (Parite(lsb) & 0x1FF); 
+            U4TXREG = (Parite(lsb) & 0x1FF);
         }
     }
     else if (state == 2)
@@ -110,21 +103,21 @@ int executeTx(struct Tx *p, uint16_t *compteur, uint8_t state)
             U4TXREG = (Parite(lsb) & 0x1FF);
         }
     }
-    else if (state == 1)
+    if (state == 3)
     {
-            
+        
         if (PORTBbits.RB9 == 0)
         {
             while (U4STAbits.UTXBF == 1) {}
-            U4TXREG = Parite(Trame[*compteur] >> 2) & 0x1FF;
+            U4TXREG = (Parite(MicValue >> 2)) & 0x1FF;
         }
         else
         {
-            Data_Transfert(Trame[*compteur], &msb, &lsb);
+            Data_Transfert(MicValue, &msb, &lsb);
             while (U4STAbits.UTXBF == 1) {}
             U4TXREG = (Parite(msb) & 0x1FF);
             while (U4STAbits.UTXBF == 1) {}
-            U4TXREG = (Parite(lsb) & 0x1FF);
+            U4TXREG = (Parite(lsb) & 0x1FF); 
         }
     }
     
