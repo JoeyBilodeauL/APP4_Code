@@ -157,6 +157,7 @@ void __ISR(_UART_4_VECTOR, IPL7AUTO) uart4_ISR(void)
             bufferRx[idx] &= 0xFF;
             bufferRx[idx] <<= 2;
             isrCompteur++;
+            waitingLsb = 0;
         }
         else
         {
