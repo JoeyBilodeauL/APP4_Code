@@ -103,7 +103,7 @@ int executeTx(struct Tx *p, uint16_t *compteur, uint8_t state)
             U4TXREG = (Parite(lsb) & 0x1FF);
         }
     }
-    if (state == 3)
+    else if (state == 3)
     {
         
         if (PORTBbits.RB9 == 0)

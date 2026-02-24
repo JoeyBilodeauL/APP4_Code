@@ -13,6 +13,6 @@ void uart4Init(void)
     IEC2bits.U4RXIE = 1;
     IPC9bits.U4IP = 7;
     IPC9bits.U4IS = 2;
-    U4MODEbits.LPBACK = 1;
+    U4MODEbits.LPBACK = 0;
     U4MODEbits.ON = 1;
 }

@@ -64,7 +64,7 @@ void main(void)
     
     LATAbits.LATA7 = 1;
     while(1)
-    {
+    {    
         if ((PORTBbits.RB8 == 1 && stateRx == ATTENTE_RX) || stateRx == ENREGISTREMENT)
         {
             stateRx = ENREGISTREMENT;
@@ -83,7 +83,7 @@ void main(void)
         else if (stateRx == RECEIVING)
         {
             rxFree = executeRx(&receivingData, &rxReceivingCompteur, stateRx);
-                if (isrCompteur == rxReceivingCompteur)
+                if (isrCompteur == rxReceivingCompteur && isrCompteur > 0)
                 {
                     stateRx = ATTENTE_RX;
                 }
@@ -104,8 +104,8 @@ void main(void)
         
         if (PORTFbits.RF3 == 1)
         {
-            txFree = executeTx(&intercomData, &txCompteur, stateTx);
             stateTx = INTERCOM;
+            txFree = executeTx(&intercomData, &txCompteur, stateTx);
         }
         else
         {
